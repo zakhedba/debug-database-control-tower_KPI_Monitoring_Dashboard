@@ -1,0 +1,28 @@
+DEBUG DATABASE CONTROL TOWER V3 - DEPLOYMENT ORDER
+
+SQL SERVER
+01. 00_DebugCT_Create_Repository_Database.sql
+02. 01_DebugCT_Install_Core_Objects.sql
+03. 02_DebugCT_Configure_Stability_and_Policies.sql
+
+WINDOWS / POWERSHELL
+04. 10_DebugCT_Create_Folders.ps1
+05. Copy 11_DebugCT_Export_Portal_CSV.ps1 to C:\Debug_ControlTower\scripts\
+
+WEB
+06. Use 30_DebugCT_Dashboard_Local_RMAN.html locally, or host after security review.
+
+SQL AGENT
+07. Review parameters in 03_DebugCT_Create_SQLAgent_Jobs.sql.
+08. Execute 03_DebugCT_Create_SQLAgent_Jobs.sql.
+
+VALIDATION
+09. Allow two 1-minute collection cycles.
+10. Execute 04_DebugCT_Validate_Deployment.sql.
+
+ORACLE / RMAN (OPTIONAL)
+11. Run 20_DebugCT_Oracle_KPI_Evidence.sql with an approved read-only monitoring account.
+12. Configure 21_DebugCT_Publish_RMAN_Logs.sh only where a secure log publication path exists.
+
+ROLLBACK
+13. Execute 05_DebugCT_Disable_Monitoring_Jobs.sql to safely stop Control Tower jobs without deleting evidence.

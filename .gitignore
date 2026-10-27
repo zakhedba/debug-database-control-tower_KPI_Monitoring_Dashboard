@@ -1,0 +1,23 @@
+# Never commit live operational data, logs, connection secrets, or backup media
+.env
+.env.*
+!.env.example
+*.bak
+*.trn
+*.bkp
+*.dmp
+*.dump
+*.key
+*.pem
+*.pfx
+*.rdp
+*.log
+*.csv
+!examples/synthetic/*.csv
+**/RMAN_Logs/
+**/www/data/
+**/evidence/raw/
+**/secrets/
+**/credentials/
+**/tickets/
+.DS_Store

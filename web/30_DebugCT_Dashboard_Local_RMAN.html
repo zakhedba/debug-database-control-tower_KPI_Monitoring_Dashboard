@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Debug Database Control Tower - SQL Server & Oracle RMAN</title>
+<style>
+:root{--blue:#003b70;--blue2:#0b65a5;--bg:#f2f5f8;--card:#fff;--text:#1d2733;--muted:#6b7785;--ok:#1f8a4c;--warn:#d58512;--crit:#c62828;--line:#dfe5eb}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Segoe UI,Arial,sans-serif;color:var(--text)}
+header{background:linear-gradient(120deg,var(--blue),var(--blue2));color:#fff;padding:18px 28px;display:flex;justify-content:space-between;gap:18px;align-items:center;position:sticky;top:0;z-index:10;box-shadow:0 2px 10px #0002}
+header h1{font-size:22px;margin:0}header .meta{font-size:12px;opacity:.95;text-align:right}.wrap{padding:22px;max-width:1700px;margin:auto}
+.localbar{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;box-shadow:0 2px 7px #0000000d}
+.localbar button,.localbar label{border:0;background:var(--blue);color:#fff;padding:9px 14px;border-radius:7px;cursor:pointer;font-weight:600}.localbar .secondary{background:#fff;color:var(--blue);border:1px solid var(--blue)}
+.localbar .status{font-size:12px;color:var(--muted);margin-left:auto}.localbar input{display:none}
+.cards{display:grid;grid-template-columns:repeat(7,minmax(150px,1fr));gap:12px;margin-bottom:18px}.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;box-shadow:0 2px 7px #0000000d}.card .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}.card .value{font-size:26px;font-weight:700;margin-top:4px}.card .sub{font-size:11px;color:var(--muted);margin-top:3px}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 18px}.toolbar button{border:1px solid var(--line);background:#fff;padding:8px 12px;border-radius:7px;cursor:pointer}.toolbar button.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.panel{display:none;background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:18px;box-shadow:0 2px 7px #0000000d}.panel.active{display:block}.panel h2{font-size:18px;margin:0 0 10px}.panel .links{float:right;font-size:12px}.panel .links button{border:0;background:transparent;color:var(--blue2);cursor:pointer;font:inherit;padding:0}
+.tablewrap{overflow:auto;max-height:590px;border:1px solid var(--line);border-radius:7px}table{border-collapse:collapse;width:100%;font-size:12px}th{position:sticky;top:0;background:#eaf0f6;color:#17324d;text-align:left;padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}td{padding:7px 8px;border-bottom:1px solid #edf0f3;vertical-align:top;max-width:440px;word-break:break-word}tr:hover td{background:#f8fbfd}
+.badge{padding:2px 7px;border-radius:10px;font-weight:600;white-space:nowrap}.ok{background:#e6f6ed;color:var(--ok)}.warning{background:#fff3d7;color:#9b6500}.critical,.failed,.breach{background:#fde9e8;color:var(--crit)}
+.footer{color:var(--muted);font-size:11px;padding:8px 0 22px}.err{background:#fde9e8;color:#8b1e1e;border:1px solid #efb8b5;padding:10px;border-radius:7px;margin-bottom:12px;display:none}.notice{background:#eaf4ff;color:#174a73;border:1px solid #b8d7ef;padding:10px;border-radius:7px;margin-bottom:12px}
+
+.rmanbar{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:-4px 0 14px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;box-shadow:0 2px 7px #0000000d}
+.rmanbar button,.rmanbar label{border:0;background:#7a3e00;color:#fff;padding:9px 14px;border-radius:7px;cursor:pointer;font-weight:600}
+.rmanbar .secondary{background:#fff;color:#7a3e00;border:1px solid #7a3e00}
+.rmanbar .status{font-size:12px;color:var(--muted);margin-left:auto}
+.rmanbar input[type=file]{display:none}
+.rmanfilter{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px}
+.rmanfilter input,.rmanfilter select{border:1px solid var(--line);border-radius:6px;padding:7px 9px;background:#fff;min-width:180px}
+.rmanlayout{display:grid;grid-template-columns:minmax(460px,42%) 1fr;gap:12px}
+.rmanlist{max-height:620px;overflow:auto;border:1px solid var(--line);border-radius:7px}
+.rmanrow{display:grid;grid-template-columns:1.5fr .7fr .7fr .7fr auto;gap:8px;align-items:center;padding:8px;border-bottom:1px solid #edf0f3;font-size:12px}
+.rmanrow:hover{background:#f8fbfd}.rmanrow.header{position:sticky;top:0;background:#eaf0f6;font-weight:700;color:#17324d;z-index:2}
+.rmanrow button{border:1px solid var(--line);background:#fff;border-radius:5px;padding:5px 8px;cursor:pointer;color:var(--blue)}
+.rmanviewer{border:1px solid var(--line);border-radius:7px;background:#0f1720;color:#d6e2ef;min-height:420px;max-height:620px;overflow:auto}
+.rmanviewer .viewerhead{position:sticky;top:0;background:#172331;color:#fff;padding:9px 11px;border-bottom:1px solid #334155;font-size:12px;display:flex;justify-content:space-between;gap:12px}
+.rmanviewer pre{margin:0;padding:12px;white-space:pre-wrap;word-break:break-word;font:12px/1.45 Consolas,Monaco,monospace}
+.rmansummary{display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:8px;margin-bottom:10px}
+.rmansummary .mini{background:#f8fafc;border:1px solid var(--line);border-radius:7px;padding:9px}.rmansummary .mini b{display:block;font-size:16px;margin-top:2px}
+@media(max-width:1100px){.rmanlayout{grid-template-columns:1fr}.rmansummary{grid-template-columns:repeat(2,1fr)}}
+
+@media(max-width:1200px){.cards{grid-template-columns:repeat(3,1fr)}}@media(max-width:650px){.cards{grid-template-columns:repeat(2,1fr)}header{align-items:flex-start;flex-direction:column}.wrap{padding:12px}.localbar .status{width:100%;margin-left:0}}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Debug Database Control Tower</h1><div>SQL Server KPI Monitoring • Oracle RMAN Evidence • Local Dashboard V3</div></div>
+  <div class="meta"><div id="serverLabel">Server: waiting for data…</div><div id="refreshLabel">Auto refresh: every 60 seconds</div><div id="countdown"></div></div>
+</header>
+<div class="wrap">
+  <div id="localBar" class="localbar">
+    <button id="pickFolderBtn" type="button">Select Data Folder</button>
+    <label id="fallbackLabel" class="secondary" for="fallbackPicker">Fallback: Select CSV Folder</label>
+    <input id="fallbackPicker" type="file" webkitdirectory directory multiple accept=".csv,text/csv" />
+    <button id="refreshNowBtn" class="secondary" type="button">Refresh Now</button>
+    <span id="localStatus" class="status">Open this file locally, then select C:\Debug_ControlTower\www\data</span>
+  </div>
+  <div id="rmanBar" class="rmanbar">
+    <button id="pickRmanFolderBtn" type="button">Select Oracle RMAN Log Folder</button>
+    <label class="secondary" for="fallbackRmanPicker">Fallback: Select RMAN .log Files</label>
+    <input id="fallbackRmanPicker" type="file" multiple accept=".log,text/plain" />
+    <span id="rmanStatus" class="status">RMAN logs: folder not selected</span>
+  </div>
+  <div id="localNotice" class="notice">
+    Local mode does not require IIS. In Microsoft Edge or Chrome, click <b>Select Data Folder</b> once and choose the folder containing summary.csv, uptime.csv, sla.csv and the other portal CSV files. The page will reread those files every 60 seconds. For Oracle, click <b>Select Oracle RMAN Log Folder</b> and choose the server/share folder containing the RMAN .log files.
+  </div>
+  <div id="errorBox" class="err"></div>
+  <div class="cards" id="cards"></div>
+  <div class="toolbar" id="tabs"></div>
+  <div id="panels"></div>
+  <div class="footer">Local operational dashboard. SQL CSV data and Oracle RMAN logs are read only from folders/files you explicitly select.</div>
+</div>
+<script>
+'use strict';
+
+const REFRESH_MS = 60000;
+let remaining = 60;
+let directoryHandle = null;
+let fallbackFiles = new Map();
+let rawCache = new Map();
+let rmanDirectoryHandle = null;
+let fallbackRmanFiles = new Map();
+let rmanLogs = [];
+let activeRmanLogKey = null;
+let activeRmanLogText = '';
+
+const datasets = [
+ {id:'uptime',title:'Database Uptime',file:'uptime.csv'},
+ {id:'sla',title:'SLA / Response Time',file:'sla.csv'},
+ {id:'jobs',title:'SQL Agent Jobs',file:'jobs.csv'},
+ {id:'backups',title:'Backup Compliance',file:'backups.csv'},
+ {id:'memory',title:'Memory',file:'memory.csv'},
+ {id:'io',title:'I/O Latency',file:'io.csv'},
+ {id:'missing_indexes',title:'Missing Index Candidates',file:'missing_indexes.csv'},
+ {id:'fragmentation',title:'Index Fragmentation',file:'fragmentation.csv'},
+ {id:'events',title:'Recent Control Tower Events',file:'events.csv'},
+ {id:'incidents',title:'Monthly Incidents / Events',file:'incidents.csv'},
+ {id:'tuning_actions',title:'Tuning Actions',file:'tuning_actions.csv'},
+ {id:'health_drivers',title:'Health Score Breakdown',file:'health_drivers.csv'},
+ {id:'rman_logs',title:'Oracle RMAN Logs',special:'rman'}
+];
+
+function parseCSV(text){
+  const rows=[];let row=[],field='',q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){
+      if(c==='"'){
+        if(text[i+1]==='"'){field+='"';i++;}
+        else q=false;
+      } else field+=c;
+    } else {
+      if(c==='"')q=true;
+      else if(c===','){row.push(field);field='';}
+      else if(c==='\n'){row.push(field.replace(/\r$/,''));rows.push(row);row=[];field='';}
+      else field+=c;
+    }
+  }
+  if(field.length||row.length){row.push(field.replace(/\r$/,''));rows.push(row);}
+  if(!rows.length)return [];
+  const headers=rows[0].map(x=>x.replace(/^\uFEFF/,''));
+  return rows.slice(1).filter(r=>r.some(x=>x!=='')).map(r=>Object.fromEntries(headers.map((h,i)=>[h,r[i]??''])));
+}
+
+async function readFromDirectoryHandle(file){
+  const h = await directoryHandle.getFileHandle(file);
+  const f = await h.getFile();
+  return await f.text();
+}
+
+async function readFromFallback(file){
+  const f = fallbackFiles.get(file.toLowerCase());
+  if(!f) throw new Error(file + ' was not selected');
+  return await f.text();
+}
+
+async function getCSV(file){
+  let text;
+  if(directoryHandle){
+    text = await readFromDirectoryHandle(file);
+  } else if(fallbackFiles.size){
+    text = await readFromFallback(file);
+  } else if(location.protocol === 'http:' || location.protocol === 'https:'){
+    const r = await fetch('data/' + file + '?t=' + Date.now(), {cache:'no-store'});
+    if(!r.ok) throw new Error(file + ': HTTP ' + r.status);
+    text = await r.text();
+  } else {
+    throw new Error('Select the local data folder first. Recommended: C:\\Debug_ControlTower\\www\\data');
+  }
+  rawCache.set(file, text);
+  return parseCSV(text);
+}
+
+function num(v){const n=Number(v);return Number.isFinite(n)?n:null;}
+function fmt(v,suffix=''){const n=num(v);return n===null?(v||'—'):n.toLocaleString(undefined,{maximumFractionDigits:2})+suffix;}
+function klass(v){const s=String(v||'').toLowerCase();if(s.includes('critical')||s.includes('failed')||s.includes('breach')||s.includes('below'))return 'critical';if(s.includes('warning')||s.includes('retry')||s.includes('canceled'))return 'warning';if(s.includes('ok')||s.includes('pass')||s.includes('succeeded')||s.includes('within'))return 'ok';return '';}
+function card(label,value,sub=''){return `<div class="card"><div class="label">${label}</div><div class="value">${value}</div><div class="sub">${sub}</div></div>`;}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function renderTable(rows){
+  if(!rows.length)return '<div style="padding:18px;color:#6b7785">No rows currently returned.</div>';
+  const cols=Object.keys(rows[0]);
+  return `<div class="tablewrap"><table><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${rows.slice(0,200).map(r=>`<tr>${cols.map(c=>{const v=r[c];const k=klass(v);return `<td>${k?`<span class="badge ${k}">${esc(v)}</span>`:esc(v)}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div>${rows.length>200?`<div style="font-size:11px;color:#6b7785;margin-top:6px">Showing first 200 of ${rows.length} rows. Use CSV download for the full dataset.</div>`:''}`;
+}
+
+
+function rmanStatusClass(text){
+  const t=String(text||'').toUpperCase();
+  if(t.includes('FAILED')||t.includes('ERROR')||t.includes('CRITICAL')) return 'critical';
+  if(t.includes('WARNING')) return 'warning';
+  if(t.includes('SUCCESS')||t.includes('COMPLETE')) return 'ok';
+  return '';
+}
+
+function analyseRmanLog(name,text,fileObj,pathLabel=''){
+  const target=(text.match(/connected to target database:\s*([^\s(]+)/i)||[])[1]||'Unknown';
+  const start=(text.match(/Starting (?:backup|Control File and SPFILE Autobackup) at\s+([^\r\n]+)/i)||[])[1]||'';
+  const finishMatches=[...text.matchAll(/Finished (?:backup|Control File and SPFILE Autobackup) at\s+([^\r\n]+)/ig)];
+  const finish=finishMatches.length?finishMatches[finishMatches.length-1][1]:'';
+  const pieces=(text.match(/piece handle=/ig)||[]).length;
+  const arch=(text.match(/archived log file name=/ig)||[]).length;
+
+  const hardError =
+    /RMAN-00569|RMAN-03009|ORA-\d{5}|LRM-\d{5}|SP2-\d{4}|\bfailed\b|\berror\b/i.test(text);
+  const warning =
+    !hardError && /RMAN-08\d{3}|\bwarning\b/i.test(text);
+  const completed=/Recovery Manager complete\./i.test(text);
+
+  let status='UNKNOWN';
+  if(hardError) status='FAILED';
+  else if(warning) status='WARNING';
+  else if(completed) status='SUCCESS';
+
+  let backupType='RMAN';
+  if(/backup\s+archivelog/i.test(text)) backupType='ARCHIVELOG';
+  else if(/backup\s+(?:database|incremental)/i.test(text)) backupType='DATABASE';
+  if(/Control File and SPFILE Autobackup/i.test(text) && backupType==='RMAN') backupType='CONTROLFILE/SPFILE';
+
+  return {
+    key:pathLabel||name,
+    name,
+    path:pathLabel||name,
+    target,
+    backupType,
+    status,
+    start,
+    finish,
+    pieces,
+    archiveLogs:arch,
+    size:fileObj?fileObj.size:0,
+    modified:fileObj&&fileObj.lastModified?new Date(fileObj.lastModified):null,
+    text
+  };
+}
+
+async function scanRmanDirectory(handle, prefix='', depth=0, out=[]){
+  if(depth>5 || out.length>=1000) return out;
+  for await (const [name,entry] of handle.entries()){
+    if(out.length>=1000) break;
+    if(entry.kind==='file' && name.toLowerCase().endsWith('.log')){
+      try{
+        const f=await entry.getFile();
+        const text=await f.text();
+        out.push(analyseRmanLog(name,text,f,prefix+name));
+      }catch(e){}
+    } else if(entry.kind==='directory' && depth<5){
+      await scanRmanDirectory(entry,prefix+name+'/',depth+1,out);
+    }
+  }
+  return out;
+}
+
+async function refreshRmanLogs(){
+  try{
+    let logs=[];
+    if(rmanDirectoryHandle){
+      logs=await scanRmanDirectory(rmanDirectoryHandle);
+    } else if(fallbackRmanFiles.size){
+      for(const [name,f] of fallbackRmanFiles.entries()){
+        const text=await f.text();
+        logs.push(analyseRmanLog(f.name,text,f,f.webkitRelativePath||f.name));
+      }
+    } else if(location.protocol==='http:' || location.protocol==='https:'){
+      // Optional HTTP mode: if rman_logs/manifest.json exists, it should contain
+      // [{"file":"ARCH_...log"}, ...]. This is not required for local mode.
+      try{
+        const mr=await fetch('rman_logs/manifest.json?t='+Date.now(),{cache:'no-store'});
+        if(mr.ok){
+          const manifest=await mr.json();
+          for(const item of manifest){
+            const file=typeof item==='string'?item:item.file;
+            const r=await fetch('rman_logs/'+encodeURIComponent(file)+'?t='+Date.now(),{cache:'no-store'});
+            if(r.ok){
+              const text=await r.text();
+              logs.push(analyseRmanLog(file,text,null,file));
+            }
+          }
+        }
+      }catch(e){}
+    }
+
+    logs.sort((a,b)=>{
+      const ad=a.modified?a.modified.getTime():0, bd=b.modified?b.modified.getTime():0;
+      if(bd!==ad) return bd-ad;
+      return b.name.localeCompare(a.name);
+    });
+    rmanLogs=logs;
+    document.getElementById('rmanStatus').textContent =
+      logs.length ? `RMAN logs loaded: ${logs.length} • last scan ${new Date().toLocaleTimeString()}` :
+      'RMAN logs: no .log files found in selected location';
+
+    renderRmanPanel();
+
+    if(activeRmanLogKey){
+      const current=rmanLogs.find(x=>x.key===activeRmanLogKey);
+      if(current) showRmanLog(current.key);
+    }
+  }catch(e){
+    document.getElementById('rmanStatus').textContent='RMAN scan failed: '+e.message;
+    renderRmanPanel();
+  }
+}
+
+function renderRmanPanel(){
+  const host=document.getElementById('t_rman_logs');
+  if(!host) return;
+
+  const filter=(document.getElementById('rmanFilterText')?.value||'').toLowerCase();
+  const status=(document.getElementById('rmanFilterStatus')?.value||'ALL');
+  const list=rmanLogs.filter(x=>{
+    const text=(x.name+' '+x.path+' '+x.target+' '+x.backupType+' '+x.status).toLowerCase();
+    return (!filter||text.includes(filter)) && (status==='ALL'||x.status===status);
+  });
+
+  const total=rmanLogs.length;
+  const success=rmanLogs.filter(x=>x.status==='SUCCESS').length;
+  const failed=rmanLogs.filter(x=>x.status==='FAILED').length;
+  const warning=rmanLogs.filter(x=>x.status==='WARNING').length;
+  const latest=rmanLogs[0];
+
+  host.innerHTML=`
+    <div class="rmansummary">
+      <div class="mini">Total Logs<b>${total}</b></div>
+      <div class="mini">Successful<b style="color:var(--ok)">${success}</b></div>
+      <div class="mini">Failed<b style="color:var(--crit)">${failed}</b></div>
+      <div class="mini">Warnings<b style="color:var(--warn)">${warning}</b></div>
+      <div class="mini">Latest<b style="font-size:12px">${latest?esc(latest.name):'—'}</b></div>
+    </div>
+    <div class="rmanfilter">
+      <input id="rmanFilterText" placeholder="Filter filename / DB / type..." value="${esc(filter)}" />
+      <select id="rmanFilterStatus">
+        <option value="ALL"${status==='ALL'?' selected':''}>All statuses</option>
+        <option value="SUCCESS"${status==='SUCCESS'?' selected':''}>SUCCESS</option>
+        <option value="WARNING"${status==='WARNING'?' selected':''}>WARNING</option>
+        <option value="FAILED"${status==='FAILED'?' selected':''}>FAILED</option>
+        <option value="UNKNOWN"${status==='UNKNOWN'?' selected':''}>UNKNOWN</option>
+      </select>
+      <button type="button" onclick="refreshRmanLogs()" style="border:1px solid var(--line);background:#fff;border-radius:6px;padding:7px 10px;cursor:pointer">Rescan Logs</button>
+    </div>
+    <div class="rmanlayout">
+      <div class="rmanlist">
+        <div class="rmanrow header"><div>Log file / DB</div><div>Type</div><div>Status</div><div>Modified</div><div></div></div>
+        ${list.length?list.map(x=>`
+          <div class="rmanrow">
+            <div><b>${esc(x.name)}</b><br><span style="color:var(--muted)">${esc(x.target)} • ${esc(x.path)}</span></div>
+            <div>${esc(x.backupType)}</div>
+            <div><span class="badge ${rmanStatusClass(x.status)}">${esc(x.status)}</span></div>
+            <div>${x.modified?esc(x.modified.toLocaleString()):esc(x.finish||x.start||'—')}</div>
+            <div><button type="button" onclick='showRmanLog(${JSON.stringify(x.key)})'>View</button></div>
+          </div>`).join(''):'<div style="padding:16px;color:var(--muted)">No RMAN .log files currently loaded. Select the Oracle RMAN log folder above.</div>'}
+      </div>
+      <div class="rmanviewer">
+        <div class="viewerhead"><span id="rmanViewerTitle">${activeRmanLogKey?esc(activeRmanLogKey):'Select a log to view'}</span><span id="rmanViewerMeta"></span></div>
+        <pre id="rmanViewerText">${activeRmanLogText?esc(activeRmanLogText):'RMAN log contents will appear here.'}</pre>
+      </div>
+    </div>`;
+
+  document.getElementById('rmanFilterText').addEventListener('input',renderRmanPanel);
+  document.getElementById('rmanFilterStatus').addEventListener('change',renderRmanPanel);
+}
+
+function showRmanLog(key){
+  const item=rmanLogs.find(x=>x.key===key);
+  if(!item) return;
+  activeRmanLogKey=key;
+  activeRmanLogText=item.text;
+  const title=document.getElementById('rmanViewerTitle');
+  const meta=document.getElementById('rmanViewerMeta');
+  const pre=document.getElementById('rmanViewerText');
+  if(title) title.textContent=item.name+' • '+item.target+' • '+item.backupType;
+  if(meta) meta.textContent=`${item.status} | Pieces: ${item.pieces} | Archived logs: ${item.archiveLogs}`;
+  if(pre) pre.textContent=item.text;
+}
+
+async function pickRmanFolder(){
+  const err=document.getElementById('errorBox');
+  err.style.display='none';
+  if(!window.showDirectoryPicker){
+    err.textContent='Direct RMAN folder access requires Microsoft Edge or Chrome. Use the fallback RMAN file picker in other browsers.';
+    err.style.display='block';
+    return;
+  }
+  try{
+    rmanDirectoryHandle=await window.showDirectoryPicker({mode:'read'});
+    fallbackRmanFiles.clear();
+    document.getElementById('rmanStatus').textContent='RMAN folder selected: '+rmanDirectoryHandle.name;
+    await refreshRmanLogs();
+  }catch(e){
+    if(e.name!=='AbortError'){
+      err.textContent='Could not open RMAN folder: '+e.message;
+      err.style.display='block';
+    }
+  }
+}
+
+function fallbackRmanSelected(ev){
+  fallbackRmanFiles.clear();
+  rmanDirectoryHandle=null;
+  for(const f of ev.target.files){
+    if(f.name.toLowerCase().endsWith('.log')) fallbackRmanFiles.set((f.webkitRelativePath||f.name).toLowerCase(),f);
+  }
+  document.getElementById('rmanStatus').textContent='Fallback RMAN files selected: '+fallbackRmanFiles.size;
+  refreshRmanLogs();
+}
+
+
+function setupUI(){
+  document.getElementById('tabs').innerHTML=datasets.map((d,i)=>`<button data-id="${d.id}" class="${i===0?'active':''}">${d.title}</button>`).join('');
+  document.getElementById('panels').innerHTML=datasets.map((d,i)=>{
+    if(d.special==='rman'){
+      return `<section id="p_${d.id}" class="panel ${i===0?'active':''}"><h2>${d.title}</h2><div id="t_${d.id}">Select the Oracle RMAN log folder above to view server backup logs.</div></section>`;
+    }
+    return `<section id="p_${d.id}" class="panel ${i===0?'active':''}"><span class="links"><button type="button" onclick="downloadCsv('${d.file}')">Download CSV</button></span><h2>${d.title}</h2><div id="t_${d.id}">Waiting for local data folder…</div></section>`;
+  }).join('');
+  document.querySelectorAll('.toolbar button').forEach(b=>b.onclick=()=>{
+    document.querySelectorAll('.toolbar button,.panel').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById('p_'+b.dataset.id).classList.add('active');
+    if(b.dataset.id==='rman_logs') renderRmanPanel();
+  });
+}
+
+function downloadCsv(file){
+  const text = rawCache.get(file);
+  if(!text){alert('Load the dashboard data first.');return;}
+  const blob = new Blob([text], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url;a.download=file;document.body.appendChild(a);a.click();a.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function refresh(){
+  const err=document.getElementById('errorBox');
+  err.style.display='none';
+  try{
+    const csvDatasets=datasets.filter(d=>!d.special);
+    const [summary,...tables]=await Promise.all([getCSV('summary.csv'),...csvDatasets.map(d=>getCSV(d.file))]);
+    const s=summary[0]||{};
+    document.getElementById('serverLabel').textContent='Server: '+(s.server_name||'Unknown');
+    document.getElementById('refreshLabel').textContent='SQL snapshot: '+(s.last_refresh||'Unknown')+' • local refresh every 60 seconds';
+    const hs=num(s.health_score);
+    document.getElementById('cards').innerHTML=[
+      card('Health Score',hs===null?'—':hs+'%','Stable V2 weighted operational score'),
+      card('Worst DB Uptime',fmt(s.worst_database_uptime_pct,'%'),'Target ≥95%'),
+      card('SLA Within',fmt(s.pct_within_sla,'%'),'Target ≥95%'),
+      card('Critical Jobs Failed',fmt(s.failed_critical_jobs_current),'Current latest status'),
+      card('Backup Exceptions',fmt(s.backup_exceptions),'Production policy only'),
+      card('Available Memory',fmt(s.available_memory_pct,'%'),(s.memory_status||'')+' • '+fmt(s.available_memory_mb,' MB')),
+      card('Interval I/O',fmt(s.max_io_latency_ms,' ms'),s.io_status||'1-minute delta')
+    ].join('');
+    csvDatasets.forEach((d,i)=>document.getElementById('t_'+d.id).innerHTML=renderTable(tables[i]));
+    if(rmanDirectoryHandle||fallbackRmanFiles.size) await refreshRmanLogs();
+    document.getElementById('localStatus').textContent='Last local read: '+new Date().toLocaleString();
+    remaining=60;
+  }catch(e){
+    err.textContent='Portal refresh failed: '+e.message;
+    err.style.display='block';
+  }
+}
+
+async function pickFolder(){
+  const err=document.getElementById('errorBox');
+  err.style.display='none';
+  if(!window.showDirectoryPicker){
+    err.textContent='This browser does not support direct folder access. Use Microsoft Edge/Chrome, or use the Fallback: Select CSV Folder button.';
+    err.style.display='block';
+    return;
+  }
+  try{
+    directoryHandle = await window.showDirectoryPicker({mode:'read'});
+    fallbackFiles.clear();
+    document.getElementById('localStatus').textContent='Folder selected: '+directoryHandle.name;
+    await refresh();
+  }catch(e){
+    if(e.name!=='AbortError'){
+      err.textContent='Could not open folder: '+e.message;
+      err.style.display='block';
+    }
+  }
+}
+
+function fallbackSelected(ev){
+  fallbackFiles.clear();
+  directoryHandle=null;
+  for(const f of ev.target.files){fallbackFiles.set(f.name.toLowerCase(), f);}
+  document.getElementById('localStatus').textContent='Fallback folder selected: '+fallbackFiles.size+' files. Reselect folder to see newly-written versions if your browser does not refresh File objects.';
+  refresh();
+}
+
+document.getElementById('pickFolderBtn').addEventListener('click',pickFolder);
+document.getElementById('fallbackPicker').addEventListener('change',fallbackSelected);
+document.getElementById('refreshNowBtn').addEventListener('click',async()=>{await refresh(); if(rmanDirectoryHandle||fallbackRmanFiles.size) await refreshRmanLogs();});
+document.getElementById('pickRmanFolderBtn').addEventListener('click',pickRmanFolder);
+document.getElementById('fallbackRmanPicker').addEventListener('change',fallbackRmanSelected);
+
+setupUI();
+if(location.protocol==='http:' || location.protocol==='https:'){
+  document.getElementById('localNotice').textContent='HTTP mode detected. The dashboard will load CSV files from the data folder next to this page.';
+  refresh();
+}
+setInterval(()=>{
+  if(directoryHandle || fallbackFiles.size || location.protocol==='http:' || location.protocol==='https:') refresh();
+  else if(rmanDirectoryHandle || fallbackRmanFiles.size) refreshRmanLogs();
+}, REFRESH_MS);
+setInterval(()=>{
+  remaining--;if(remaining<=0)remaining=60;
+  document.getElementById('countdown').textContent='Next refresh in '+remaining+'s';
+},1000);
+</script>
+</body>
+</html>
